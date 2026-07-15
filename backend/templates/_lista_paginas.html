@@ -1,0 +1,41 @@
+<div id="lista-paginas">
+    {% if not paginas %}
+        <p>Nenhuma página monitorada ainda.</p>
+    {% endif %}
+
+    {% for pagina in paginas %}
+    <div class="pagina">
+        <div class="pagina-header">
+            <h2>{{ pagina.nome_amigavel }}</h2>
+            <form hx-delete="/paginas/{{ pagina.id }}"
+                  hx-target="#lista-paginas"
+                  hx-swap="outerHTML"
+                  hx-confirm="Remover '{{ pagina.nome_amigavel }}' do monitoramento?">
+                <button type="submit" class="btn-remover">Remover</button>
+            </form>
+        </div>
+        <div class="url">{{ pagina.url }}</div>
+
+        {% if pagina.ultimo_erro %}
+        <p class="erro">⚠️ {{ pagina.ultimo_erro }}</p>
+        {% endif %}
+
+        {% if pagina.changes %}
+            {% for mudanca in pagina.changes %}
+            <div class="mudanca">
+                <time>{{ mudanca.detectado_em.strftime('%d/%m/%Y %H:%M') }}</time>
+                <div class="novo">{{ mudanca.conteudo_novo }}</div>
+                {% if mudanca.contexto %}
+                <details>
+                    <summary>Expandir contexto</summary>
+                    <div class="contexto-preview">{{ mudanca.contexto }}</div>
+                </details>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p><em>Sem mudanças detectadas até o momento.</em></p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>

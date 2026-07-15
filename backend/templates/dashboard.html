@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor de Páginas</title>
+    <script src="/static/htmx.min.js"></script>
+    <script src="/static/alpine.min.js" defer></script>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+        .form-adicionar { display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .form-adicionar input { flex: 1; min-width: 200px; padding: 0.5rem; }
+        .form-adicionar button, .btn-remover { padding: 0.5rem 1rem; cursor: pointer; }
+        .pagina { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; }
+        .pagina-header { display: flex; justify-content: space-between; align-items: center; }
+        .pagina-header h2 { margin: 0; }
+        .btn-remover { background: #fdecea; color: #611a15; border: 1px solid #e57373; border-radius: 4px; }
+        .url { color: #666; font-size: 0.85rem; word-break: break-all; margin-bottom: 0.5rem; }
+        .erro { background: #fdecea; color: #611a15; padding: 0.75rem; border-radius: 6px; }
+        .mudanca { border-left: 3px solid #2e7d32; padding-left: 0.75rem; margin: 1rem 0; }
+        .mudanca time { color: #666; font-size: 0.8rem; }
+        .novo { background: #e8f5e9; padding: 0.5rem; border-radius: 4px; white-space: pre-wrap; }
+        .contexto-preview { color: #444; white-space: pre-wrap; }
+        details summary { cursor: pointer; color: #1565c0; }
+        .popup-notificacao {
+            position: fixed; bottom: 20px; right: 20px;
+            background: #2e7d32; color: #fff; padding: 1rem 1.5rem;
+            border-radius: 8px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            z-index: 1000; max-width: 320px;
+        }
+    </style>
+</head>
+<body x-data="{ visivel: false, mensagem: '' }"
+      x-init="
+        const ws = new WebSocket(`ws://${window.location.host}/ws/notifications`);
+        ws.onmessage = (event) => {
+            const dados = JSON.parse(event.data);
+            mensagem = 'Nova atualização em ' + dados.nome_amigavel;
+            visivel = true;
+            setTimeout(() => visivel = false, 5000);
+        };
+      ">
+    <div class="popup-notificacao"
+         x-show="visivel"
+         x-transition
+         @click="visivel = false; document.getElementById('lista-paginas').scrollIntoView({ behavior: 'smooth' })"
+         style="display: none;">
+        <span x-text="mensagem"></span>
+    </div>
+
+    <h1>Monitor de Páginas</h1>
+
+    <form class="form-adicionar"
+          hx-post="/paginas"
+          hx-target="#lista-paginas"
+          hx-swap="outerHTML"
+          hx-on::after-request="this.reset()">
+        <input type="url" name="url" placeholder="URL da página" required>
+        <input type="text" name="nome_amigavel" placeholder="Nome amigável" required>
+        <button type="submit">Adicionar</button>
+    </form>
+
+    {% include "_lista_paginas.html" %}
+</body>
+</html>
