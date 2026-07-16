@@ -15,6 +15,7 @@
         .pagina-header h2 { margin: 0; }
         .btn-remover { background: #fdecea; color: #611a15; border: 1px solid #e57373; border-radius: 4px; }
         .url { color: #666; font-size: 0.85rem; word-break: break-all; margin-bottom: 0.5rem; }
+        .ultima-atualizacao { color: #666; font-size: 0.85rem; margin: -0.5rem 0 1.5rem; }
         .erro { background: #fdecea; color: #611a15; padding: 0.75rem; border-radius: 6px; }
         .mudanca { border-left: 3px solid #2e7d32; padding-left: 0.75rem; margin: 1rem 0; }
         .mudanca time { color: #666; font-size: 0.8rem; }
@@ -37,6 +38,7 @@
             mensagem = 'Nova atualização em ' + dados.nome_amigavel;
             visivel = true;
             setTimeout(() => visivel = false, 5000);
+            document.body.dispatchEvent(new Event('atualizacao-detectada'));
         };
       ">
     <div class="popup-notificacao"
@@ -58,6 +60,12 @@
         <input type="text" name="nome_amigavel" placeholder="Nome amigável" required>
         <button type="submit">Adicionar</button>
     </form>
+
+    <div hx-get="/paginas"
+         hx-trigger="atualizacao-detectada from:body"
+         hx-target="#lista-paginas"
+         hx-swap="outerHTML"
+         style="display: none;"></div>
 
     {% include "_lista_paginas.html" %}
 </body>

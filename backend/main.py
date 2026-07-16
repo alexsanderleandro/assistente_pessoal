@@ -1,12 +1,15 @@
 """Ponto de entrada da aplicação FastAPI."""
 import asyncio
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from database import Base, engine, get_db
@@ -16,10 +19,24 @@ from scheduler import start_scheduler
 from notifications import manager
 
 BASE_DIR = Path(__file__).resolve().parent
+FUSO_LOCAL = ZoneInfo("America/Sao_Paulo")
 
 app = FastAPI(title="Monitor de Páginas")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+def data_local(dt: datetime | None) -> str:
+    """Converte um datetime armazenado em UTC (o SQLite descarta o tzinfo,
+    mas o valor ainda representa UTC) para o horário de Brasília ao exibir."""
+    if dt is None:
+        return "Nunca"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(FUSO_LOCAL).strftime("%d/%m/%Y %H:%M")
+
+
+templates.env.filters["data_local"] = data_local
 
 # cria as tabelas no startup; em produção real usaríamos migrations, mas
 # para o volume deste projeto (9 páginas) isso é suficiente
@@ -65,11 +82,33 @@ def _listar_paginas_com_mudancas(db: Session) -> list[models.MonitoredPage]:
     return paginas
 
 
+def _ultima_atualizacao_global(db: Session) -> datetime | None:
+    """Timestamp da verificação automática mais recente, entre todas as
+    páginas monitoradas (exibido no cabeçalho do dashboard)."""
+    return db.query(func.max(models.MonitoredPage.ultima_verificacao)).scalar()
+
+
+def _contexto_lista_paginas(db: Session) -> dict:
+    return {
+        "paginas": _listar_paginas_com_mudancas(db),
+        "ultima_atualizacao": _ultima_atualizacao_global(db),
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db)):
-    paginas = _listar_paginas_com_mudancas(db)
     return templates.TemplateResponse(
-        request, "dashboard.html", {"paginas": paginas}
+        request, "dashboard.html", _contexto_lista_paginas(db)
+    )
+
+
+@app.get("/paginas", response_class=HTMLResponse)
+def listar_paginas(request: Request, db: Session = Depends(get_db)):
+    """Retorna só a lista de páginas (partial), usada pelo HTMX para
+    atualizar o dashboard automaticamente ao receber notificação via
+    WebSocket, sem recarregar a página inteira."""
+    return templates.TemplateResponse(
+        request, "_lista_paginas.html", _contexto_lista_paginas(db)
     )
 
 
@@ -82,9 +121,8 @@ def adicionar_pagina(
 ):
     db.add(models.MonitoredPage(url=url, nome_amigavel=nome_amigavel))
     db.commit()
-    paginas = _listar_paginas_com_mudancas(db)
     return templates.TemplateResponse(
-        request, "_lista_paginas.html", {"paginas": paginas}
+        request, "_lista_paginas.html", _contexto_lista_paginas(db)
     )
 
 
@@ -94,9 +132,8 @@ def remover_pagina(request: Request, page_id: int, db: Session = Depends(get_db)
     if db_page:
         db.delete(db_page)
         db.commit()
-    paginas = _listar_paginas_com_mudancas(db)
     return templates.TemplateResponse(
-        request, "_lista_paginas.html", {"paginas": paginas}
+        request, "_lista_paginas.html", _contexto_lista_paginas(db)
     )
 
 

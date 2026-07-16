@@ -5,3 +5,4 @@ playwright
 apscheduler
 jinja2
 python-multipart
+tzdata
