@@ -79,6 +79,22 @@ nssm restart MonitorPaginasGov
 
 Ou abra `services.msc` e procure por "Monitor de paginas GOV".
 
+### Navegador do Playwright (cache compartilhado)
+
+O serviço roda como `NT AUTHORITY\SYSTEM`, cujo `%LOCALAPPDATA%` é isolado do
+perfil do usuário interativo. Por isso o `service_install.ps1` configura a
+variável `PLAYWRIGHT_BROWSERS_PATH=C:\ProgramData\ms-playwright` no serviço, e
+os navegadores devem ser instalados **nesse mesmo caminho compartilhado**, não
+no perfil do usuário:
+
+```powershell
+$env:PLAYWRIGHT_BROWSERS_PATH = "C:\ProgramData\ms-playwright"
+backend\venv\Scripts\python.exe -m playwright install chromium
+```
+
+Se isso não for feito, o serviço falha para **todas** as páginas com o erro
+`BrowserType.launch: Executable doesn't exist...`.
+
 ### Atualizar o código
 
 Sempre que o código do backend for alterado, pare e reinicie o serviço para
@@ -245,9 +261,16 @@ python -m uvicorn main:app --port 8001
 ### Playwright não consegue abrir páginas
 
 ```bash
-# Reinstalar navegador
+# Reinstalar navegador (uso manual, fora do serviço)
 python -m playwright install chromium
 ```
+
+Se o erro (`BrowserType.launch: Executable doesn't exist...`) acontecer **só
+quando rodando como serviço do Windows**, veja a seção
+"Navegador do Playwright (cache compartilhado)" acima — o serviço roda como
+SYSTEM e precisa dos navegadores instalados em
+`PLAYWRIGHT_BROWSERS_PATH=C:\ProgramData\ms-playwright`, não no perfil do
+usuário.
 
 ### Erro de SSL/certificado corporativo
 

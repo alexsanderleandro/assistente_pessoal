@@ -10,6 +10,11 @@ $Nssm        = "C:\Users\alex.CEOSOFTWAREAD\Documents\Python\NSSM\win64\nssm.exe
 $BackendDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PythonExe   = Join-Path $BackendDir "venv\Scripts\python.exe"
 $LogFile     = Join-Path $BackendDir "data\service.log"
+# cache compartilhado do Playwright: o serviço roda como SYSTEM, cujo
+# %LOCALAPPDATA% é isolado do perfil do usuário onde os navegadores foram
+# instalados manualmente, então fixamos um caminho comum acessível por
+# qualquer conta (ver troubleshooting no README.md)
+$PlaywrightBrowsersPath = "C:\ProgramData\ms-playwright"
 
 if (-not (Test-Path $Nssm)) {
     throw "nssm.exe não encontrado em $Nssm"
@@ -41,6 +46,7 @@ if ($statusExitCode -eq 0) {
 & $Nssm set $ServiceName AppRestartDelay 5000
 & $Nssm set $ServiceName DisplayName "Monitor de paginas GOV"
 & $Nssm set $ServiceName Description "Dashboard + agendador de monitoramento de páginas governamentais (FastAPI/Uvicorn + APScheduler)."
+& $Nssm set $ServiceName AppEnvironmentExtra "PLAYWRIGHT_BROWSERS_PATH=$PlaywrightBrowsersPath"
 
 & $Nssm start $ServiceName
 
