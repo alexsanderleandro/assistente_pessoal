@@ -45,7 +45,7 @@ if ($statusExitCode -eq 0) {
 & $Nssm set $ServiceName AppExit Default Restart
 & $Nssm set $ServiceName AppRestartDelay 5000
 & $Nssm set $ServiceName DisplayName "Monitor de paginas GOV"
-& $Nssm set $ServiceName Description "Dashboard + agendador de monitoramento de páginas governamentais (FastAPI/Uvicorn + APScheduler)."
+& $Nssm set $ServiceName Description "Dashboard + agendador de monitoramento de paginas governamentais (FastAPI/Uvicorn + APScheduler)."
 & $Nssm set $ServiceName AppEnvironmentExtra "PLAYWRIGHT_BROWSERS_PATH=$PlaywrightBrowsersPath"
 
 & $Nssm start $ServiceName
